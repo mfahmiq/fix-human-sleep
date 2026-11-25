@@ -1,0 +1,1 @@
+{"agent_id":"48983324-204b-4dea-93e9-bd82c83f2d75","created_at":null,"input_tokens":null,"message_id":null,"model":"muse-spark-1.3","note":"Subagent session: token usage rows not visible to this agent. Attach real rows from the parent session database when bundling; do not treat the nulls above as zero usage.","output_tokens":null}

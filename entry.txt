@@ -1,0 +1,1 @@
+Fixed a bug where humans woke up at 3 AM to replay every embarrassing thing they did in 2011.

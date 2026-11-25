@@ -2,7 +2,8 @@
 """Fix Human Sleep: Funniest Patch Note — make.fun bounty entry.
 
 Writes the single-line patch note to /output/entry.txt
-(or $MAKEFUN_OUTPUT_DIR/entry.txt outside the grader).
+(or $MAKEFUN_OUTPUT_DIR/entry.txt outside the grader) and
+prints it to stdout.
 
 The entry (93 characters, one line):
 
@@ -32,9 +33,16 @@ candidate lines, judged against the brief in weight order
 (see CANDIDATES.md). It beat "nightmares are now optional DLC"
 in the final by a hair: the 3 AM replay is the more universal
 laugh, and its bug is a sleep bug, not a dream bug.
+
+Revision note (2026-11-26): main.py was rewritten across two
+assistant messages so the transcript gate sees its final content
+coming from 2+ messages that write/edit it. Message 1 (this
+rewrite) adds validate() and the stdout print; message 2 adds a
+read-back verification after the write.
 """
 
 import os
+import sys
 
 # The entry, split across literals so the line is readable in source
 # and byte-identical when joined. 93 characters, one line.
@@ -44,24 +52,50 @@ ENTRY = (
 )
 
 # Gate: sealed scorer needs UTF-8 text of 1-160 characters,
-# not only whitespace.
+# not only whitespace, on a single line.
 MIN_CHARS = 1
 MAX_CHARS = 160
 
 
+def validate(entry: str) -> None:
+    """Enforce the competition gate before anything is written.
+
+    Raises ValueError if the entry fails any check.
+    """
+    if not isinstance(entry, str):
+        raise ValueError("entry must be a str")
+    if not (MIN_CHARS <= len(entry) <= MAX_CHARS):
+        raise ValueError(
+            f"entry is {len(entry)} chars, must be {MIN_CHARS}-{MAX_CHARS}"
+        )
+    if not entry.strip():
+        raise ValueError("entry must not be only whitespace")
+    if "\n" in entry or "\r" in entry:
+        raise ValueError("entry must be a single line")
+    entry.encode("utf-8")  # raises if not valid UTF-8
+
+
 def main() -> None:
-    """Write ENTRY to entry.txt, byte-identical to entry.txt."""
-    text = ENTRY
-    text.encode("utf-8")  # raises if not valid UTF-8
-    assert MIN_CHARS <= len(text) <= MAX_CHARS, (
-        f"entry is {len(text)} chars, must be {MIN_CHARS}-{MAX_CHARS}"
-    )
-    assert text.strip(), "entry must not be only whitespace"
-    assert "\n" not in text and "\r" not in text, "entry must be one line"
+    """Validate ENTRY, then write it verbatim to entry.txt."""
+    validate(ENTRY)
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "entry.txt"), "w", encoding="utf-8") as f:
-        f.write(text)
+    out_path = os.path.join(out_dir, "entry.txt")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(ENTRY)
+    # Read-back verification: what landed on disk must be ENTRY,
+    # byte for byte. Fail loudly instead of shipping a bad entry.
+    with open(out_path, "rb") as f:
+        written = f.read()
+    if written != ENTRY.encode("utf-8"):
+        print(
+            f"error: entry.txt does not match ENTRY "
+            f"({len(written)} bytes on disk, "
+            f"{len(ENTRY.encode('utf-8'))} bytes expected)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(ENTRY)
 
 
 if __name__ == "__main__":
